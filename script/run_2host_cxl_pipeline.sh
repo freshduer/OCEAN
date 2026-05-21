@@ -39,17 +39,25 @@ fi
 # Shared memory backends
 truncate -s 1G /dev/shm/lsa1.raw 2>/dev/null || true
 
-# CXL fabric server
-if ! ss -tlnp | grep -q ':9999'; then
+# CXL path: PGAS-SHM (fast) — pairs with QEMU CXL_TRANSPORT_MODE=shm
+PGAS_SHM="${PGAS_SHM:-/cxlmemsim_pgas}"
+export CXL_TRANSPORT_MODE="${CXL_TRANSPORT_MODE:-shm}"
+
+if ! pgrep -f '[c]xlmemsim_server' >/dev/null; then
   cd "$BUILD_DIR"
-  nohup ./cxlmemsim_server --capacity=1024 --port 9999 \
+  shm_unlink "${PGAS_SHM}" 2>/dev/null || true
+  nohup ./cxlmemsim_server --capacity=1024 --comm-mode pgas-shm \
+    --pgas-shm-name "${PGAS_SHM}" \
     > "${LOG_DIR}/cxlmemsim_server.log" 2>&1 &
-  sleep 1
+  sleep 2
 fi
 
-if ! ss -tlnp | grep -q ':9999'; then
-  echo "[ERROR] cxlmemsim_server failed to bind port 9999"
+if ! pgrep -f '[c]xlmemsim_server' >/dev/null; then
+  echo "[ERROR] cxlmemsim_server failed to start (see ${LOG_DIR}/cxlmemsim_server.log)"
   exit 1
+fi
+if ! grep -q "PGAS shared memory" "${LOG_DIR}/cxlmemsim_server.log" 2>/dev/null; then
+  echo "[WARN] Server log may not show PGAS mode yet; check ${LOG_DIR}/cxlmemsim_server.log"
 fi
 
 # Stop stale QEMU
@@ -64,7 +72,7 @@ sleep 3
 nohup sudo -E bash ./launch_qemu_cxl1.sh \
   > "${LOG_DIR}/vm1_serial.log" 2>&1 &
 
-echo "Started 2-host pipeline."
+echo "Started 2-host pipeline (CXL_TRANSPORT_MODE=${CXL_TRANSPORT_MODE}, server comm-mode=pgas-shm)."
 echo "  Server log: ${LOG_DIR}/cxlmemsim_server.log"
 echo "  VM0 log:    ${LOG_DIR}/vm0_serial.log"
 echo "  VM1 log:    ${LOG_DIR}/vm1_serial.log"

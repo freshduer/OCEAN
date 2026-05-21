@@ -162,3 +162,11 @@ add_executable(cxl_transport_latency_bench cxl_transport_latency_bench.c)
 target_compile_options(cxl_transport_latency_bench PRIVATE -std=gnu11)
 target_include_directories(cxl_transport_latency_bench PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(cxl_transport_latency_bench PRIVATE rt pthread)
+
+find_package(cxxopts REQUIRED)
+
+add_executable(embedding_bench embedding_sim/embedding_bench.cpp)
+target_compile_features(embedding_bench PRIVATE cxx_std_20)
+target_include_directories(embedding_bench PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(embedding_bench PRIVATE cxxopts::cxxopts)
+set_target_properties(embedding_bench PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

@@ -7,8 +7,8 @@ VM_MEMORY=${VM_MEMORY:-2G}
 CXL_MEMORY=${CXL_MEMORY:-4G}
 DISK_IMAGE=${DISK_IMAGE:-plucky-server-cloudimg-amd64.img}
 
-# Route QEMU CXL.mem/LSA traffic through the TCP RPC backend by default.
-export CXL_TRANSPORT_MODE=${CXL_TRANSPORT_MODE:-tcp}
+# CXL.mem/LSA → host PGAS-SHM (cxlmemsim_server --comm-mode pgas-shm). Use tcp only for M0 baseline.
+export CXL_TRANSPORT_MODE=${CXL_TRANSPORT_MODE:-shm}
 export CXL_HOST_ID=1
 export CXL_LATENCY_INJECT=1
 SERIAL_PORT=${CXL_VM1_SERIAL_PORT:-4551}

@@ -1,0 +1,5 @@
+workload=criteo
+queries=9999990
+top10_access_frac=0.926545
+max_cdf_gap=0
+gate1_pass=yes

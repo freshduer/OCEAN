@@ -1,0 +1,15 @@
+workload=criteo
+cache_unlimited=no
+table_gib=10
+l1_gib=0.0625 l2_gib=5 sim_cxl_mb=10240
+warmup_passes=0
+warmup_queries=4999995 measure_queries=4999995
+l1_rows_configured=131072 l2_rows_configured=10485760
+l1_rows=131072 l2_rows=10485760
+logical_hot_rows=2097152 trace_hot_rows926=63252 cache_pressure_scale=1
+p_tier1=0.928069 p_tier2=0.0236464
+p_tier3=0.048285
+l3_rate_hot=0.000316051
+l3_rate_cold=0.713734
+l3_mass_cold_rows=0.993895
+gate2_pass=yes
