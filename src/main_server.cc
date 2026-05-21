@@ -209,8 +209,10 @@ public:
             shm_manager = std::make_unique<SharedMemoryManager>(capacity_mb);
         }
 
-        // Initialize LSA storage (256KB default per CXL spec)
-        lsa_size_ = 256 * 1024;
+        // Match qemu_integration launch scripts (cxl-lsa1 memory-backend size=1G).
+        // Guest may probe the full backend during CXL/ndctl init; 256KB caused TCP
+        // LSA_READ rejections and noisy "LSA read failed" in QEMU (local fallback).
+        lsa_size_ = 1024ULL * 1024 * 1024;
         lsa_data_.resize(lsa_size_, 0);
         SPDLOG_INFO("LSA initialized: {} bytes", lsa_size_);
     }
@@ -855,14 +857,15 @@ void ThreadPerConnectionServer::handle_request(int client_fd, int thread_id, Ser
     if (req.op_type == OP_LSA_READ) {
         std::lock_guard<std::mutex> lock(lsa_mutex_);
         uint64_t clamped_size = std::min((uint64_t)req.size, (uint64_t)64);
-        if (req.addr + clamped_size <= lsa_size_) {
-            memcpy(resp.data, lsa_data_.data() + req.addr, clamped_size);
-            resp.status = 0;
-        } else {
-            SPDLOG_ERROR("Thread {}: LSA read out of bounds: offset=0x{:x} size={}",
-                         thread_id, (uint64_t)req.addr, clamped_size);
-            resp.status = 1;
+        if (req.addr + clamped_size > lsa_size_) {
+            size_t new_size = req.addr + clamped_size;
+            SPDLOG_INFO("Thread {}: Growing LSA for read from {} to {} bytes",
+                        thread_id, lsa_size_, new_size);
+            lsa_data_.resize(new_size, 0);
+            lsa_size_ = new_size;
         }
+        memcpy(resp.data, lsa_data_.data() + req.addr, clamped_size);
+        resp.status = 0;
         return;
     }
     if (req.op_type == OP_LSA_WRITE) {

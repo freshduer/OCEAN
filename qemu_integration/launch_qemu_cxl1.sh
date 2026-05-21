@@ -11,6 +11,7 @@ DISK_IMAGE=${DISK_IMAGE:-plucky-server-cloudimg-amd64.img}
 export CXL_TRANSPORT_MODE=${CXL_TRANSPORT_MODE:-tcp}
 export CXL_HOST_ID=1
 export CXL_LATENCY_INJECT=1
+SERIAL_PORT=${CXL_VM1_SERIAL_PORT:-4551}
 $QEMU_BINARY \
     --enable-kvm -cpu qemu64,+xsave,+rdtscp,+avx,+avx2,+sse4.1,+sse4.2,+avx512f,+avx512dq,+avx512ifma,+avx512cd,+avx512bw,+avx512vl,+avx512vbmi,+clflushopt  \
     -m 16G,maxmem=32G,slots=8 \
@@ -32,4 +33,5 @@ $QEMU_BINARY \
     -object memory-backend-file,id=cxl-mem1,share=on,mem-path=/dev/shm/cxlmemsim_shared,size=1G \
     -object memory-backend-file,id=cxl-lsa1,share=on,mem-path=/dev/shm/lsa1.raw,size=1G \
     -M cxl-fmw.0.targets.0=cxl.1,cxl-fmw.0.size=4G \
-    -nographic
+    -display none \
+    -serial "tcp:127.0.0.1:${SERIAL_PORT},server=on,telnet=on,wait=off"

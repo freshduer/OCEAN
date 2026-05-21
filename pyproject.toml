@@ -13,4 +13,5 @@ dependencies = [
     "gdown",
     "tomli",
     "pytest",
+    "requests",
 ]

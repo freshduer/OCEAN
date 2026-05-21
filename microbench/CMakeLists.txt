@@ -157,3 +157,8 @@ target_compile_options(test_dax_litmus_atomic PRIVATE -std=gnu11)
 add_executable(test_dax_litmus_tearing test_dax_litmus_tearing.c)
 target_compile_options(test_dax_litmus_tearing PRIVATE -std=gnu11)
 target_compile_definitions(st_serial256 PRIVATE -DFENCE_COUNT=256)
+
+add_executable(cxl_transport_latency_bench cxl_transport_latency_bench.c)
+target_compile_options(cxl_transport_latency_bench PRIVATE -std=gnu11)
+target_include_directories(cxl_transport_latency_bench PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(cxl_transport_latency_bench PRIVATE rt pthread)

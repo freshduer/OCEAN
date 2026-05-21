@@ -6,5 +6,6 @@ pyyaml
 scikit-learn
 seaborn
 gdown
+requests
 tomli
 pytest
