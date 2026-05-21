@@ -1,0 +1,105 @@
+[2026-05-21 02:05:40.385] [warning] [main_server.cc:409] Topology file topology.txt not found, using default topology
+[2026-05-21 02:05:40.385] [info] [main_server.cc:414] ========================================
+[2026-05-21 02:05:40.385] [info] [main_server.cc:415] CXLMemSim CXL Type3 Memory Server
+[2026-05-21 02:05:40.385] [info] [main_server.cc:416] ========================================
+[2026-05-21 02:05:40.385] [info] [main_server.cc:417] Server Configuration:
+[2026-05-21 02:05:40.385] [info] [main_server.cc:422]   Communication Mode: TCP
+[2026-05-21 02:05:40.385] [info] [main_server.cc:447]   Port: 19999
+[2026-05-21 02:05:40.385] [info] [main_server.cc:448]   Topology: topology.txt
+[2026-05-21 02:05:40.385] [info] [main_server.cc:449]   Capacity: 64 MB
+[2026-05-21 02:05:40.385] [info] [main_server.cc:450]   Default latency: 100 ns
+[2026-05-21 02:05:40.385] [info] [main_server.cc:451]   Interleave size: 256 bytes
+[2026-05-21 02:05:40.385] [info] [main_server.cc:452] CXL Type3 Operations Supported:
+[2026-05-21 02:05:40.385] [info] [main_server.cc:453]   - CXL_TYPE3_READ
+[2026-05-21 02:05:40.385] [info] [main_server.cc:454]   - CXL_TYPE3_WRITE
+[2026-05-21 02:05:40.385] [info] [main_server.cc:464] ========================================
+[2026-05-21 02:05:40.385] [info] [shared_memory_manager.cc:32] SharedMemoryManager: Capacity 64MB, Total size: 67108864 bytes
+[2026-05-21 02:05:40.385] [info] [main_server.cc:215] LSA initialized: 262144 bytes
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:124] Created new shared memory: /cxlmemsim_pgas
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:169] Mapped shared memory at address: 0x7f7812df6000
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:203] Initialized header: 1048575 cachelines available
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:204] Base address: 0x0 (0 = accept any address)
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:215] Preserving existing data in shared memory
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:226] Initialized data area: 67108808 bytes
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:77] SharedMemoryManager initialized successfully
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:78]   Shared memory: /cxlmemsim_pgas
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:79]   Size: 64 MB
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:80]   Base address: 0x0
+[2026-05-21 02:05:40.386] [info] [shared_memory_manager.cc:81]   Cachelines: 1048575
+[2026-05-21 02:05:40.386] [info] [main_server.cc:571] Shared memory initialized:
+[2026-05-21 02:05:40.386] [info] [main_server.cc:572]   Name: /cxlmemsim_pgas
+[2026-05-21 02:05:40.386] [info] [main_server.cc:573]   Size: 67108864 bytes
+[2026-05-21 02:05:40.386] [info] [main_server.cc:574]   Base address: 0x0
+[2026-05-21 02:05:40.386] [info] [main_server.cc:575]   Cachelines: 1048575
+[2026-05-21 02:05:40.386] [info] [main_server.cc:602] >>> TCP mode: Initializing TCP socket <<<
+[2026-05-21 02:05:40.386] [info] [main_server.cc:634] Server listening on TCP port 19999
+[2026-05-21 02:05:40.386] [info] [main_server.cc:651] Running in TCP mode
+FF...F.........                                                          [100%]
+=================================== FAILURES ===================================
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/cxlmemsim_test_dzne7ofu/nonexistent_binary'
+/home/wenjun/anaconda3/lib/python3.11/subprocess.py:1950: FileNotFoundError: [Errno 2] No such file or directory: '/tmp/cxlmemsim_test_dzne7ofu/nonexistent_binary'
+E   NameError: name 'plt' is not defined
+----------------------------- Captured stdout call -----------------------------
+Running 1 profiling configurations...
+Results saved to /tmp/cxlmemsim_test_dzne7ofu/test_output_test_integration_all_use_cases/prod/profiling_results_1779329146.json
+Report saved to /tmp/cxlmemsim_test_dzne7ofu/test_output_test_integration_all_use_cases/prod/profiling_report_1779329146.png
+Summary saved to /tmp/cxlmemsim_test_dzne7ofu/test_output_test_integration_all_use_cases/prod/profiling_summary_1779329146.txt
+Evaluating static_balanced with test...
+Comparison report saved to /tmp/cxlmemsim_test_dzne7ofu/test_output_test_integration_all_use_cases/tier
+/home/wenjun/orion-yuwenjun/OCEAN/use_cases/memory_tiering/tiering_policy_engine.py:680: NameError: name 'plt' is not defined
+E   NameError: name 'plt' is not defined
+----------------------------- Captured stdout call -----------------------------
+Evaluating static_balanced with test_memory_workload...
+Evaluating static_local_heavy with test_memory_workload...
+Evaluating hotness_based with test_memory_workload...
+Comparison report saved to /tmp/cxlmemsim_test_dzne7ofu/test_output_test_memory_tiering_policy_comparison
+/home/wenjun/orion-yuwenjun/OCEAN/use_cases/memory_tiering/tiering_policy_engine.py:680: NameError: name 'plt' is not defined
+=============================== warnings summary ===============================
+use_cases/test_use_cases.py::TestCXLMemSimUseCases::test_integration_all_use_cases
+use_cases/test_use_cases.py::TestCXLMemSimUseCases::test_memory_tiering_policy_comparison
+  /home/wenjun/orion-yuwenjun/OCEAN/use_cases/memory_tiering/tiering_policy_engine.py:576: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+    axes[1, 0].boxplot(perf_data, labels=policies)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED use_cases/test_use_cases.py::TestCXLMemSimUseCases::test_error_handling
+FAILED use_cases/test_use_cases.py::TestCXLMemSimUseCases::test_integration_all_use_cases
+FAILED use_cases/test_use_cases.py::TestCXLMemSimUseCases::test_memory_tiering_policy_comparison
+3 failed, 12 passed, 2 warnings in 44.10s
+[2026-05-21 02:06:29.323] [info] [main_server.cc:262] Shutting down server...
+[2026-05-21 02:06:29.323] [info] [main_server.cc:692] Server Statistics:
+[2026-05-21 02:06:29.323] [info] [main_server.cc:693]   Total Reads: 0
+[2026-05-21 02:06:29.323] [info] [main_server.cc:694]   Total Writes: 0
+[2026-05-21 02:06:29.323] [info] [main_server.cc:695]   Atomic FAA: 0
+[2026-05-21 02:06:29.323] [info] [main_server.cc:696]   Atomic CAS: 0 (success: 0)
+[2026-05-21 02:06:29.323] [info] [main_server.cc:697]   Fences: 0
+[2026-05-21 02:06:29.323] [info] [main_server.cc:698]   Coherency Invalidations: 0
+[2026-05-21 02:06:29.323] [info] [main_server.cc:699]   Coherency Downgrades: 0
+[2026-05-21 02:06:29.323] [info] [main_server.cc:700]   Back Invalidations: 0
+CXLController:
+Total system memory capacity: 64GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 0
+    HITM: 0
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 0
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 1
+  Number of Endpoints: 1
+  Number of Threads created: 0
+  Memory Freed: 0 bytes
+

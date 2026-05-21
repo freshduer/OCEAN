@@ -1,0 +1,17 @@
+# Deprecated: use uv instead.
+#   bash script/setup_python_uv.sh
+# Or: uv venv .venv && source .venv/bin/activate && uv pip install -r requirements.txt
+name: ocean
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - matplotlib
+  - pyyaml
+  - scikit-learn
+  - seaborn
+  - gdown
+  - tomli
+  - pytest

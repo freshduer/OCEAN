@@ -12,7 +12,6 @@
 #ifndef CXLMEMSIM_PERF_H
 #define CXLMEMSIM_PERF_H
 
-#include <bpf/bpf.h>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>

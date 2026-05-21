@@ -1,0 +1,10 @@
+# OCEAN Python deps (also installable via: uv pip install -r requirements.txt)
+numpy
+pandas
+matplotlib
+pyyaml
+scikit-learn
+seaborn
+gdown
+tomli
+pytest

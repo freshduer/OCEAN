@@ -1,0 +1,16 @@
+[project]
+name = "ocean"
+version = "0.1.0"
+description = "OCEAN Python tooling (use cases, profiling scripts)"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "pyyaml",
+    "scikit-learn",
+    "seaborn",
+    "gdown",
+    "tomli",
+    "pytest",
+]
