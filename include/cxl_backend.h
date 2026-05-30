@@ -203,6 +203,11 @@ const char* cxl_backend_type_name(cxl_backend_type_t type);
 #define CXL_SHM_REQ_WRITE_META    7   /* Write with metadata */
 #define CXL_SHM_REQ_GET_META      8   /* Get metadata only */
 #define CXL_SHM_REQ_SET_META      9   /* Set metadata only */
+#define CXL_SHM_REQ_BULK_READ     10  /* Large read; data via mmap pool (zero-copy) */
+#define CXL_SHM_REQ_BULK_WRITE    11  /* Large write; client fills pool before ACK */
+
+/* Max bytes per PGAS bulk op (matches TCP CXL_BULK_MAX_SIZE). */
+#define CXL_SHM_BULK_MAX_SIZE (1u << 20)
 
 /* Response status */
 #define CXL_SHM_RESP_NONE     0
@@ -280,6 +285,47 @@ static inline void cxl_cpu_pause(void) {
 #else
     __asm__ __volatile__("" ::: "memory");
 #endif
+}
+
+/* Copy to/from PGAS pool (128B entries: 64B data + 64B metadata). */
+static inline void cxl_pgas_copy_from_pool(const uint8_t* pool_base, uint32_t entry_size, uint64_t addr,
+                                           void* dst, size_t size, uint64_t memory_size) {
+    uint8_t* dstp = (uint8_t*)dst;
+    size_t done = 0;
+    while (done < size) {
+        uint64_t cur = addr + done;
+        if (cur >= memory_size) {
+            return;
+        }
+        uint64_t line = cur / CXL_SHM_CACHELINE_SIZE;
+        size_t off = (size_t)(cur % CXL_SHM_CACHELINE_SIZE);
+        size_t chunk = CXL_SHM_CACHELINE_SIZE - off;
+        if (chunk > size - done) {
+            chunk = size - done;
+        }
+        memcpy(dstp + done, pool_base + line * entry_size + off, chunk);
+        done += chunk;
+    }
+}
+
+static inline void cxl_pgas_copy_to_pool(const uint8_t* pool_base, uint32_t entry_size, uint64_t addr,
+                                         const void* src, size_t size, uint64_t memory_size) {
+    const uint8_t* srcp = (const uint8_t*)src;
+    size_t done = 0;
+    while (done < size) {
+        uint64_t cur = addr + done;
+        if (cur >= memory_size) {
+            return;
+        }
+        uint64_t line = cur / CXL_SHM_CACHELINE_SIZE;
+        size_t off = (size_t)(cur % CXL_SHM_CACHELINE_SIZE);
+        size_t chunk = CXL_SHM_CACHELINE_SIZE - off;
+        if (chunk > size - done) {
+            chunk = size - done;
+        }
+        memcpy((void*)(pool_base + line * entry_size + off), srcp + done, chunk);
+        done += chunk;
+    }
 }
 
 /* Size calculation */

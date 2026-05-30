@@ -1261,6 +1261,9 @@ typedef struct __attribute__((packed)) {
 #define CXL_SHM_REQ_WRITE_META    7   /* Write with metadata */
 #define CXL_SHM_REQ_GET_META      8   /* Get metadata only */
 #define CXL_SHM_REQ_SET_META      9   /* Set metadata only */
+#define CXL_SHM_REQ_BULK_READ     10  /* Large read; data from mmap PGAS pool */
+#define CXL_SHM_REQ_BULK_WRITE    11  /* Large write; client fills pool first */
+#define CXL_SHM_BULK_MAX_SIZE     (1u << 20)
 
 /* Response status */
 #define CXL_SHM_RESP_NONE     0
@@ -1727,6 +1730,113 @@ static int cxl_memsim_connect_locked(void) {
     return 0;
 }
 
+/* PGAS bulk over SHM: one slot handshake + memcpy from/to mmap pool. */
+static int cxl_memsim_shm_bulk_request(uint8_t op, uint64_t addr, uint64_t size,
+                                       void *data, CXLMemSimResponse *resp)
+{
+    CXLShmSlot *slot;
+    uint32_t shm_req_type;
+    int retries;
+
+    if (!g_memsim.shm_header || !g_memsim.connected || !g_memsim.shm_memory) {
+        return -1;
+    }
+    if (size == 0 || size > CXL_SHM_BULK_MAX_SIZE ||
+        addr + size > g_memsim.shm_header->memory_size) {
+        return -1;
+    }
+
+    slot = &g_memsim.shm_header->slots[g_memsim.shm_slot_id];
+
+    retries = 1000000;
+    while (__atomic_load_n(&slot->req_type, __ATOMIC_ACQUIRE) != CXL_SHM_REQ_NONE &&
+           retries > 0) {
+#if defined(__x86_64__) || defined(__i386__)
+        __asm__ __volatile__("pause" ::: "memory");
+#else
+        __asm__ __volatile__("" ::: "memory");
+#endif
+        retries--;
+    }
+    if (retries == 0) {
+        return -1;
+    }
+
+    if (op == CXL_OP_WRITE && data) {
+        uint32_t entry_size = g_memsim.shm_header->entry_size;
+        if (!entry_size) {
+            entry_size = 128;
+        }
+        uint8_t *pool = (uint8_t *)g_memsim.shm_memory;
+        size_t done = 0;
+        while (done < size) {
+            uint64_t cur = addr + done;
+            uint64_t line = cur / CXL_SHM_CACHELINE_SIZE;
+            size_t off = (size_t)(cur % CXL_SHM_CACHELINE_SIZE);
+            size_t chunk = CXL_SHM_CACHELINE_SIZE - off;
+            if (chunk > size - done) {
+                chunk = size - done;
+            }
+            memcpy(pool + line * entry_size + off, (uint8_t *)data + done, chunk);
+            done += chunk;
+        }
+        shm_req_type = CXL_SHM_REQ_BULK_WRITE;
+    } else if (op == CXL_OP_READ) {
+        shm_req_type = CXL_SHM_REQ_BULK_READ;
+    } else {
+        return -1;
+    }
+
+    slot->addr = addr;
+    slot->size = size;
+    slot->timestamp = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    __atomic_store_n(&slot->resp_status, CXL_SHM_RESP_NONE, __ATOMIC_RELEASE);
+    __atomic_thread_fence(__ATOMIC_RELEASE);
+    __atomic_store_n(&slot->req_type, shm_req_type, __ATOMIC_RELEASE);
+
+    retries = 100000000;
+    while (__atomic_load_n(&slot->resp_status, __ATOMIC_ACQUIRE) == CXL_SHM_RESP_NONE &&
+           retries > 0) {
+#if defined(__x86_64__) || defined(__i386__)
+        __asm__ __volatile__("pause" ::: "memory");
+#else
+        __asm__ __volatile__("" ::: "memory");
+#endif
+        retries--;
+    }
+    if (retries == 0) {
+        return -1;
+    }
+
+    __atomic_thread_fence(__ATOMIC_ACQUIRE);
+    resp->status = (slot->resp_status == CXL_SHM_RESP_OK) ? 0 : 1;
+    resp->latency_ns = slot->latency_ns;
+
+    if (op == CXL_OP_READ && data && resp->status == 0) {
+        uint32_t entry_size = g_memsim.shm_header->entry_size;
+        if (!entry_size) {
+            entry_size = 128;
+        }
+        uint8_t *pool = (uint8_t *)g_memsim.shm_memory;
+        size_t done = 0;
+        while (done < size) {
+            uint64_t cur = addr + done;
+            uint64_t line = cur / CXL_SHM_CACHELINE_SIZE;
+            size_t off = (size_t)(cur % CXL_SHM_CACHELINE_SIZE);
+            size_t chunk = CXL_SHM_CACHELINE_SIZE - off;
+            if (chunk > size - done) {
+                chunk = size - done;
+            }
+            memcpy((uint8_t *)data + done, pool + line * entry_size + off, chunk);
+            done += chunk;
+        }
+    }
+
+    __atomic_store_n(&slot->resp_status, CXL_SHM_RESP_NONE, __ATOMIC_RELEASE);
+    __atomic_store_n(&slot->req_type, CXL_SHM_REQ_NONE, __ATOMIC_RELEASE);
+    return 0;
+}
+
 /* SHM request function - assumes lock is held */
 static int cxl_memsim_shm_request(uint8_t op, uint64_t addr, uint64_t size,
                                   void *data, uint64_t value, uint64_t expected,
@@ -1870,7 +1980,11 @@ static int cxl_memsim_request_ext(uint8_t op, uint64_t addr, uint64_t size,
 
     /* SHM mode */
     if (g_memsim.transport_mode == CXL_TRANSPORT_SHM) {
-        ret = cxl_memsim_shm_request(op, addr, size, data, value, expected, resp);
+        if ((op == CXL_OP_READ || op == CXL_OP_WRITE) && size > CXL_SHM_CACHELINE_SIZE) {
+            ret = cxl_memsim_shm_bulk_request(op, addr, size, data, resp);
+        } else {
+            ret = cxl_memsim_shm_request(op, addr, size, data, value, expected, resp);
+        }
         if (ret == 0) {
             switch (op) {
                 case CXL_OP_READ:       g_memsim.stats_reads++; break;
@@ -2039,8 +2153,13 @@ MemTxResult cxl_type3_read(PCIDevice *d, hwaddr host_addr, uint64_t *data,
                      + ts_before.tv_nsec;
         }
 
-        if (cxl_memsim_request(CXL_OP_READ, dpa_offset, size, NULL, &resp) == 0) {
-            if (resp.status == 0 && size <= 64) {
+        void *read_buf = NULL;
+        if (g_memsim.transport_mode == CXL_TRANSPORT_SHM &&
+            size > CXL_SHM_CACHELINE_SIZE) {
+            read_buf = (void *)data;
+        }
+        if (cxl_memsim_request(CXL_OP_READ, dpa_offset, size, read_buf, &resp) == 0) {
+            if (resp.status == 0 && size <= CXL_SHM_CACHELINE_SIZE) {
                 memcpy(data, resp.data, size);
             }
 
@@ -2099,7 +2218,12 @@ MemTxResult cxl_type3_write(PCIDevice *d, hwaddr host_addr, uint64_t data,
                      + ts_before.tv_nsec;
         }
 
-        if (cxl_memsim_request(CXL_OP_WRITE, dpa_offset, size, &data, &resp) == 0) {
+        void *write_buf = &data;
+        if (g_memsim.transport_mode == CXL_TRANSPORT_SHM &&
+            size > CXL_SHM_CACHELINE_SIZE) {
+            write_buf = (void *)&data;
+        }
+        if (cxl_memsim_request(CXL_OP_WRITE, dpa_offset, size, write_buf, &resp) == 0) {
             /* Enforce simulated CXL latency */
             cxl_memsim_inject_latency(start_ns, resp.latency_ns);
 

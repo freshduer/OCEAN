@@ -1852,6 +1852,50 @@ int ThreadPerConnectionServer::poll_pgas_shm_requests() {
                 break;
             }
 
+            case CXL_SHM_REQ_BULK_READ:
+            case CXL_SHM_REQ_BULK_WRITE: {
+                const uint64_t bulk_size = slot->size;
+                const bool is_read = (req == CXL_SHM_REQ_BULK_READ);
+                if (bulk_size == 0 || bulk_size > CXL_SHM_BULK_MAX_SIZE ||
+                    addr + bulk_size > pgas_shm_header_->memory_size) {
+                    slot->resp_status = CXL_SHM_RESP_ERROR;
+                    processed++;
+                    break;
+                }
+                /* One topology latency for the whole transfer (not per cacheline). */
+                std::vector<std::tuple<uint64_t, uint64_t>> bulk_elem;
+                bulk_elem.push_back(std::make_tuple(addr, bulk_size));
+                double bulk_latency =
+                    controller->calculate_latency(bulk_elem, controller->dramlatency);
+                if (!is_read) {
+                    /* Client already wrote PGAS pool; server only validates + latency. */
+                    size_t first_line = static_cast<size_t>(addr / 64);
+                    size_t last_line =
+                        static_cast<size_t>((addr + bulk_size - 1) / 64);
+                    if (last_line >= num_cachelines) {
+                        slot->resp_status = CXL_SHM_RESP_ERROR;
+                        processed++;
+                        break;
+                    }
+                    entries[first_line].metadata.cache_state = CXL_CACHE_MODIFIED;
+                    entries[last_line].metadata.cache_state = CXL_CACHE_MODIFIED;
+                    entries[first_line].metadata.last_access_time = slot->timestamp;
+                    entries[last_line].metadata.last_access_time = slot->timestamp;
+                    total_writes++;
+                } else {
+                    size_t first_line = static_cast<size_t>(addr / 64);
+                    entries[first_line].metadata.last_access_time = slot->timestamp;
+                    total_reads++;
+                }
+                slot->latency_ns = static_cast<uint64_t>(bulk_latency);
+                __atomic_thread_fence(__ATOMIC_RELEASE);
+                slot->resp_status = CXL_SHM_RESP_OK;
+                log_periodic_stats(is_read ? "PGAS_BULK_READ" : "PGAS_BULK_WRITE",
+                                   is_read ? total_reads.load() : total_writes.load());
+                processed++;
+                break;
+            }
+
             default:
                 break;
         }

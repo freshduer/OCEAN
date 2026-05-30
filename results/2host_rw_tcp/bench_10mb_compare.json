@@ -1,0 +1,71 @@
+{
+  "date": "2026-05-30",
+  "workload": "one logical 10 MiB read (host localhost, capacity 1024 MiB)",
+  "notes": {
+    "tcp_bulk": "10 x 1 MiB OP_BULK_READ (CXL_BULK_MAX_SIZE=1MiB)",
+    "tcp_cacheline": "163840 x 64B OP_READ; extrapolated from 200-op sample",
+    "pgas_slot": "163840 x 64B CXL_SHM_REQ_READ; full run very slow due to per-line calculate_latency; use microbench + prior 64B throughput",
+    "pgas_mmap_direct": "client memcpy from PGAS pool, no slot RPC (upper bound, not QEMU path)",
+    "shm_no_10mb_single_op": "PGAS slot data buffer is 64B; cannot do one 10MB RPC today"
+  },
+  "measured": {
+    "pgas_bulk_10mb_after_fix": {
+      "p50_ms": 2.64,
+      "avg_ms": 2.63,
+      "throughput_mib_s": 3799.5,
+      "rpc_count": 10,
+      "note": "CXL_SHM_REQ_BULK_READ + mmap pool copy; rebuild 2026-05-30"
+    },
+    "tcp_bulk_10mb": {
+      "p50_ms": 10.7,
+      "avg_ms": 10.2,
+      "throughput_mib_s": 980,
+      "rpc_count": 10,
+      "tool": "microbench/bench_10mb_read.c",
+      "samples": 5
+    },
+    "tcp_cacheline_10mb_extrapolated": {
+      "est_ms": 6194,
+      "throughput_mib_s": 1.61,
+      "rpc_count": 163840,
+      "method": "200x64B sample scaled"
+    },
+    "pgas_slot_10mb_from_64b_bench": {
+      "est_ms": 303,
+      "throughput_mib_s": 33.0,
+      "rpc_count": 163840,
+      "source": "results/2host_rw_tcp/single_host_read_shm.json (p50 0.396us RTT, wall 33 MiB/s)"
+    },
+    "pgas_slot_10mb_hot_sequential_scaled": {
+      "est_ms": 46.4,
+      "throughput_mib_s": 215.5,
+      "method": "4096 sequential slot ops in 1.16ms, scaled (optimistic, same lines hot)",
+      "caveat": "not cold/full-address footprint"
+    },
+    "pgas_mmap_direct_10mb": {
+      "ms": 26.0,
+      "throughput_mib_s": 385,
+      "caveat": "no server slot, no MESI/coherency"
+    }
+  },
+  "rdma_cxl_theory_reference": {
+    "note": "Order-of-magnitude from line-rate and small-message latency literature; not OCEAN measured",
+    "ten_mb_line_rate": {
+      "at_64_gbps_cxl_ms": 1.31,
+      "at_100_gbps_ib_rdma_ms": 0.84,
+      "at_200_gbps_ms": 0.42
+    },
+    "ten_mb_if_every_64b_pays_rtt": {
+      "at_2us_per_op_ms": 328,
+      "at_3us_per_op_ms": 492,
+      "at_5us_per_op_ms": 819
+    },
+    "small_message_rtt_us_typical": "2-5 (RDMA READ/WRITE over IB); CXL.mem fine-grain often tens of ns–µs in papers, platform-dependent"
+  },
+  "comparison_summary": {
+    "fastest_measured_path": "tcp_bulk (~10 ms, ~1 GiB/s localhost)",
+    "motivation_path": "tcp_cacheline or pgas_slot (~0.3-6 s for 10 MiB)",
+    "vs_rdma_line_rate": "TCP bulk localhost within same order as 64-100 Gbps line-rate bound (~0.8-1.3 ms); cacheline paths orders of magnitude slower than line rate because of 163840 round trips",
+    "vs_rdma_small_msg": "PGAS p50 0.4us RTT per 64B is below typical RDMA 2-5us; 10MB still slow unless bulk/zero-copy"
+  }
+}
