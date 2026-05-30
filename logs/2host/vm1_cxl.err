@@ -1,0 +1,78 @@
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID[eax=07h,ecx=00h].EBX.avx512ifma [bit 21]
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID[eax=07h,ecx=00h].ECX.avx512vbmi [bit 1]
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID[eax=07h,ecx=00h].EBX.avx512ifma [bit 21]
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID[eax=07h,ecx=00h].ECX.avx512vbmi [bit 1]
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID[eax=07h,ecx=00h].EBX.avx512ifma [bit 21]
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID[eax=07h,ecx=00h].ECX.avx512vbmi [bit 1]
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID[eax=07h,ecx=00h].EBX.avx512ifma [bit 21]
+qemu-system-x86_64: warning: host doesn't support requested feature: CPUID[eax=07h,ecx=00h].ECX.avx512vbmi [bit 1]
+qemu-system-x86_64: -device cxl-type3,bus=root_port13,persistent-memdev=cxl-mem1,lsa=cxl-lsa1,id=cxl-pmem0,sn=0x1: info: CXL Type3: Persistent memory initialized - size=1024 MB
+CXL Type1: Transport mode = tcp
+CXL Type1: Using TCP transport mode
+Connected to CXLMemSim server at 127.0.0.1:9999
+CXL Type1: Device realized with 64 MB cache at BAR2
+Warning: Failed to connect to CXLMemSim at 127.0.0.1:9999: Unable to set TCP keep-alive count option on socket: Invalid argument
+CXL Type1: Cache read at 0x0 = 0x0 (size 8)
+qemu-system-x86_64: info: CXL Type3: Initializing CXLMemSim integration
+qemu-system-x86_64: info: CXL Type3: CXLMemSim TCP mode - 127.0.0.1:9999
+qemu-system-x86_64: info: CXL Type3: Active latency injection ENABLED (min=0 ns)
+qemu-system-x86_64: info: CXL Type3: Request #1 (op=LSA_READ, connected=0, transport=TCP)
+qemu-system-x86_64: info: CXL Type3: Connection attempt #1 to CXLMemSim server at 127.0.0.1:9999
+qemu-system-x86_64: info: CXL Type3: Successfully connected to CXLMemSim (fd=31)
+qemu-system-x86_64: info: CXL Type3: Request #2 (op=LSA_READ, connected=1, transport=TCP)
+qemu-system-x86_64: info: CXL Type3: Request #3 (op=LSA_READ, connected=1, transport=TCP)
+qemu-system-x86_64: info: CXL Type3: Request #4 (op=LSA_READ, connected=1, transport=TCP)
+qemu-system-x86_64: info: CXL Type3: Request #5 (op=LSA_READ, connected=1, transport=TCP)
+qemu-system-x86_64: info: CXL Type3: Request #6 (op=LSA_READ, connected=1, transport=TCP)
+qemu-system-x86_64: info: CXL Type3: Request #7 (op=LSA_READ, connected=1, transport=TCP)
+qemu-system-x86_64: info: CXL Type3: Request #8 (op=LSA_READ, connected=1, transport=TCP)
+qemu-system-x86_64: info: CXL Type3: Request #9 (op=LSA_READ, connected=1, transport=TCP)
+qemu-system-x86_64: info: CXL Type3: Request #10 (op=LSA_READ, connected=1, transport=TCP)
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 100000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 200000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 300000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 400000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 500000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 600000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 700000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 800000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 900000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 1000000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 1100000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 1200000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 1300000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 1400000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 1500000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 1600000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 1700000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 1800000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 1900000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 2000000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 2100000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 2200000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 2300000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 2400000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 2500000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 2600000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 2700000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 2800000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 2900000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 3000000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 3100000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 3200000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 3300000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 3400000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 3500000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 3600000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 3700000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 3800000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 3900000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 4000000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 4100000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 4200000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 4300000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 4400000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 4500000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 4600000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: info: CXL Type3: Latency injection stats @ 4700000 ops: injected=0 times, total_delay=0 us, avg=0.0 ns/injection
+qemu-system-x86_64: Failed to receive from CXLMemSim: Unexpected end-of-file before all data were read

@@ -1,0 +1,60 @@
+{
+  "host": "127.0.0.1",
+  "port": 9999,
+  "duration_s": 20.0,
+  "warmup_s": 3.0,
+  "scenarios": {
+    "1r1w": {
+      "clients": 2,
+      "total_ops": 671040,
+      "errors": 0,
+      "aggregate_mib_s": 2.048,
+      "aggregate_ops_s": 33552.0,
+      "per_client_ops_s": 16776.0,
+      "latency_us": {
+        "p50": 53.03,
+        "p99": 82.61,
+        "avg": 54.01
+      }
+    },
+    "2readers": {
+      "clients": 2,
+      "total_ops": 773497,
+      "errors": 0,
+      "aggregate_mib_s": 2.361,
+      "aggregate_ops_s": 38674.8,
+      "per_client_ops_s": 19337.4,
+      "latency_us": {
+        "p50": 45.4,
+        "p99": 71.69,
+        "avg": 46.49
+      }
+    },
+    "2writers": {
+      "clients": 2,
+      "total_ops": 565615,
+      "errors": 0,
+      "aggregate_mib_s": 1.726,
+      "aggregate_ops_s": 28280.8,
+      "per_client_ops_s": 14140.4,
+      "latency_us": {
+        "p50": 61.95,
+        "p99": 99.08,
+        "avg": 64.04
+      }
+    },
+    "4mixed_2r2w": {
+      "clients": 4,
+      "total_ops": 553380,
+      "errors": 0,
+      "aggregate_mib_s": 1.689,
+      "aggregate_ops_s": 27669.0,
+      "per_client_ops_s": 6917.2,
+      "latency_us": {
+        "p50": 126.38,
+        "p99": 346.35,
+        "avg": 139.41
+      }
+    }
+  }
+}

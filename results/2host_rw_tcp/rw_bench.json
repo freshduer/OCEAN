@@ -1,0 +1,34 @@
+{
+  "host": "127.0.0.1",
+  "port": 9999,
+  "mode": "bulk",
+  "bulk_bytes": 1048576,
+  "duration_s": 15.0,
+  "warmup_s": 3.0,
+  "reader": {
+    "role": "reader",
+    "ops": 5159,
+    "bytes": 5409603584,
+    "errors": 0,
+    "throughput_mib_s": 343.93,
+    "throughput_ops_s": 343.9,
+    "latency_us": {
+      "p50": 2997.57,
+      "p99": 4210.29,
+      "avg": 2894.93
+    }
+  },
+  "writer": {
+    "role": "writer",
+    "ops": 8901,
+    "bytes": 9333374976,
+    "errors": 0,
+    "throughput_mib_s": 593.4,
+    "throughput_ops_s": 593.4,
+    "latency_us": {
+      "p50": 1515.95,
+      "p99": 3635.92,
+      "avg": 1673.68
+    }
+  }
+}

@@ -1737,10 +1737,14 @@ static int cxl_memsim_shm_request(uint8_t op, uint64_t addr, uint64_t size,
 
     CXLShmSlot *slot = &g_memsim.shm_header->slots[g_memsim.shm_slot_id];
 
-    /* Wait for slot to be free */
-    int retries = 1000;
+    /* Wait for slot to be free (spin; usleep added 100us+ latency per op). */
+    int retries = 1000000;
     while (__atomic_load_n(&slot->req_type, __ATOMIC_ACQUIRE) != CXL_SHM_REQ_NONE && retries > 0) {
-        usleep(100);
+#if defined(__x86_64__) || defined(__i386__)
+        __asm__ __volatile__("pause" ::: "memory");
+#else
+        __asm__ __volatile__("" ::: "memory");
+#endif
         retries--;
     }
 
@@ -1776,9 +1780,13 @@ static int cxl_memsim_shm_request(uint8_t op, uint64_t addr, uint64_t size,
     __atomic_store_n(&slot->req_type, shm_req_type, __ATOMIC_RELEASE);
 
     /* Wait for response */
-    retries = 10000;
+    retries = 10000000;
     while (__atomic_load_n(&slot->resp_status, __ATOMIC_ACQUIRE) == CXL_SHM_RESP_NONE && retries > 0) {
-        usleep(10);
+#if defined(__x86_64__) || defined(__i386__)
+        __asm__ __volatile__("pause" ::: "memory");
+#else
+        __asm__ __volatile__("" ::: "memory");
+#endif
         retries--;
     }
 

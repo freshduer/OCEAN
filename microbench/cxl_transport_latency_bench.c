@@ -127,11 +127,11 @@ static int pgas_open(const char *shm_name, pgas_ctx_t *ctx) {
     ctx->hdr = (cxl_shm_header_t *)mapped;
     ctx->map_size = (size_t)st.st_size;
 
-    for (int i = 0; i < 5000; i++) {
+    for (int i = 0; i < 5000000; i++) {
         if (__atomic_load_n(&ctx->hdr->server_ready, __ATOMIC_ACQUIRE) != 0) {
             return 0;
         }
-        usleep(1000);
+        cxl_cpu_pause();
     }
     fprintf(stderr, "timeout waiting for PGAS server_ready\n");
     return -1;
@@ -140,12 +140,12 @@ static int pgas_open(const char *shm_name, pgas_ctx_t *ctx) {
 static int pgas_read_sample(pgas_ctx_t *ctx, uint64_t addr, uint64_t *rtt_ns, uint64_t *server_lat_ns) {
     cxl_shm_slot_t *slot = &ctx->hdr->slots[0];
 
-    for (int i = 0; i < 2000; i++) {
+    for (int i = 0; i < 10000000; i++) {
         if (__atomic_load_n(&slot->req_type, __ATOMIC_ACQUIRE) == CXL_SHM_REQ_NONE) {
             break;
         }
-        usleep(1);
-        if (i == 1999) {
+        cxl_cpu_pause();
+        if (i == 9999999) {
             return -1;
         }
     }
@@ -155,13 +155,13 @@ static int pgas_read_sample(pgas_ctx_t *ctx, uint64_t addr, uint64_t *rtt_ns, ui
     slot->timestamp = now_ns();
     slot->value = 0;
     slot->expected = 0;
-    __atomic_thread_fence(__ATOMIC_RELEASE);
     __atomic_store_n(&slot->resp_status, CXL_SHM_RESP_NONE, __ATOMIC_RELEASE);
+    __atomic_thread_fence(__ATOMIC_RELEASE);
 
     uint64_t t0 = now_ns();
     __atomic_store_n(&slot->req_type, CXL_SHM_REQ_READ, __ATOMIC_RELEASE);
 
-    for (int i = 0; i < 200000; i++) {
+    for (int i = 0; i < 10000000; i++) {
         uint32_t st = __atomic_load_n(&slot->resp_status, __ATOMIC_ACQUIRE);
         if (st != CXL_SHM_RESP_NONE) {
             uint64_t t1 = now_ns();
@@ -176,9 +176,7 @@ static int pgas_read_sample(pgas_ctx_t *ctx, uint64_t addr, uint64_t *rtt_ns, ui
             __atomic_store_n(&slot->req_type, CXL_SHM_REQ_NONE, __ATOMIC_RELEASE);
             return 0;
         }
-        if ((i & 63) == 0) {
-            sched_yield();
-        }
+        cxl_cpu_pause();
     }
     __atomic_store_n(&slot->resp_status, CXL_SHM_RESP_NONE, __ATOMIC_RELEASE);
     __atomic_store_n(&slot->req_type, CXL_SHM_REQ_NONE, __ATOMIC_RELEASE);

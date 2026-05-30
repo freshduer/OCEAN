@@ -1,0 +1,52 @@
+{
+  "host": "127.0.0.1",
+  "port": 9999,
+  "role": "read_only",
+  "cases": [
+    {
+      "label": "single_read_bulk_256k",
+      "mode": "bulk",
+      "block_bytes": 262144,
+      "duration_s": 20,
+      "ops": 36715,
+      "errors": 0,
+      "throughput_mib_s": 458.94,
+      "throughput_ops_s": 1835.8,
+      "latency_us": {
+        "p50": 494.3,
+        "p99": 1037.13,
+        "avg": 539.34
+      }
+    },
+    {
+      "label": "single_read_bulk_1m",
+      "mode": "bulk",
+      "block_bytes": 1048576,
+      "duration_s": 15,
+      "ops": 7873,
+      "errors": 0,
+      "throughput_mib_s": 524.87,
+      "throughput_ops_s": 524.9,
+      "latency_us": {
+        "p50": 1925.38,
+        "p99": 3895.58,
+        "avg": 1900.61
+      }
+    },
+    {
+      "label": "single_read_cacheline_64b",
+      "mode": "cacheline",
+      "block_bytes": 64,
+      "duration_s": 15,
+      "ops": 312827,
+      "errors": 0,
+      "throughput_mib_s": 1.27,
+      "throughput_ops_s": 20855.1,
+      "latency_us": {
+        "p50": 45.53,
+        "p99": 58.02,
+        "avg": 45.51
+      }
+    }
+  ]
+}

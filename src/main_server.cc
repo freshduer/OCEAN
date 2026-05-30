@@ -8,6 +8,7 @@
  *  UC Santa Cruz Sluglab.
  */
 
+#include "../include/cxl_wire_protocol.h"
 #include "../include/shared_memory_manager.h"
 #include "cxl_backend.h"
 #include "cxlcontroller.h"
@@ -60,6 +61,8 @@ constexpr uint8_t OP_ATOMIC_CAS = 4;   // Compare-and-Swap
 constexpr uint8_t OP_FENCE = 5;        // Memory fence
 constexpr uint8_t OP_LSA_READ = 6;     // Label Storage Area read
 constexpr uint8_t OP_LSA_WRITE = 7;    // Label Storage Area write
+constexpr uint8_t OP_BULK_READ = CXL_OP_BULK_READ;
+constexpr uint8_t OP_BULK_WRITE = CXL_OP_BULK_WRITE;
 
 // Server request/response structures (matching qemu_integration)
 struct __attribute__((packed)) ServerRequest {
@@ -245,6 +248,8 @@ private:
     
     // Request handling
     void handle_request(int client_fd, int thread_id, ServerRequest& req, ServerResponse& resp);
+    void handle_bulk_request(int client_fd, int thread_id, CXLBulkRequestHeader& hdr,
+                             const uint8_t* write_data);
     void handle_atomic_request(int thread_id, ServerRequest& req, ServerResponse& resp);
     uint64_t calculate_total_latency(uint64_t base_latency, double congestion_factor,
                                    bool had_coherency_miss, uint64_t size);
@@ -842,6 +847,58 @@ uint64_t ThreadPerConnectionServer::calculate_total_latency(uint64_t base_latenc
     return static_cast<uint64_t>(latency);
 }
 
+void ThreadPerConnectionServer::handle_bulk_request(int client_fd, int thread_id,
+                                                    CXLBulkRequestHeader& hdr,
+                                                    const uint8_t* write_data) {
+    using clock = std::chrono::steady_clock;
+    auto start = clock::now();
+    CXLBulkResponseHeader resp{};
+
+    const uint64_t bulk_size = hdr.size;
+    const uint64_t bulk_addr = hdr.addr;
+    if (bulk_size == 0 || bulk_size > CXL_BULK_MAX_SIZE) {
+        SPDLOG_WARN("Thread {}: bulk invalid size {}", thread_id, bulk_size);
+        resp.status = 1;
+        resp.latency_ns = 0;
+        send(client_fd, &resp, sizeof(resp), 0);
+        return;
+    }
+    if (!shm_manager->is_valid_address(bulk_addr)) {
+        SPDLOG_WARN("Thread {}: bulk invalid addr 0x{:x}", thread_id, bulk_addr);
+        resp.status = 1;
+        resp.latency_ns = 0;
+        send(client_fd, &resp, sizeof(resp), 0);
+        return;
+    }
+
+    bool ok = false;
+    std::vector<uint8_t> read_buf;
+    if (hdr.op_type == OP_BULK_READ) {
+        read_buf.resize(bulk_size);
+        ok = shm_manager->read_memory(bulk_addr, read_buf.data(), bulk_size);
+    } else {
+        ok = write_data && shm_manager->write_memory(bulk_addr, write_data, bulk_size);
+    }
+
+    auto end = clock::now();
+    resp.latency_ns =
+        static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+    resp.status = ok ? 0 : 1;
+
+    ssize_t sent = send(client_fd, &resp, sizeof(resp), 0);
+    if (sent != static_cast<ssize_t>(sizeof(resp))) {
+        SPDLOG_ERROR("Thread {}: bulk response header send failed", thread_id);
+        return;
+    }
+    if (hdr.op_type == OP_BULK_READ && ok) {
+        sent = send(client_fd, read_buf.data(), bulk_size, 0);
+        if (sent != static_cast<ssize_t>(bulk_size)) {
+            SPDLOG_ERROR("Thread {}: bulk read payload send failed ({}/{})", thread_id, sent, bulk_size);
+        }
+    }
+    update_congestion_stats(bulk_size);
+}
+
 void ThreadPerConnectionServer::handle_request(int client_fd, int thread_id, ServerRequest& req, ServerResponse& resp) {
     // CRITICAL: Memory barrier before reading from shared memory
     // This ensures we see all updates from other guests
@@ -1292,12 +1349,11 @@ void ThreadPerConnectionServer::handle_client(int client_fd, int thread_id) {
     }
     
     while (running) {
-        ServerRequest req;
-        ssize_t received = recv(client_fd, &req, sizeof(req), MSG_WAITALL);
-        
-        if (received != sizeof(req)) {
+        uint8_t op_byte = 0;
+        ssize_t received = recv(client_fd, &op_byte, 1, MSG_WAITALL);
+
+        if (received != 1) {
             if (received == 0) {
-                // This might be a probe connection - don't log as error
                 SPDLOG_DEBUG("Thread {}: Client disconnected (probe connection?)", thread_id);
             } else if (received < 0) {
                 int err = errno;
@@ -1306,33 +1362,57 @@ void ThreadPerConnectionServer::handle_client(int client_fd, int thread_id) {
                 } else if (err == ETIMEDOUT) {
                     SPDLOG_INFO("Thread {}: Connection timed out", thread_id);
                 } else if (err == EAGAIN || err == EWOULDBLOCK) {
-                    // Non-blocking socket, no data available
                     continue;
                 } else {
-                    SPDLOG_ERROR("Thread {}: recv() failed with error: {} ({})", 
-                                thread_id, strerror(err), err);
+                    SPDLOG_ERROR("Thread {}: recv() failed with error: {} ({})", thread_id, strerror(err), err);
                 }
             } else {
-                SPDLOG_ERROR("Thread {}: Incomplete request - received {} bytes, expected {}", 
-                            thread_id, received, sizeof(req));
-                // Dump what we received for debugging
-                if (received > 0) {
-                    std::stringstream hex_dump;
-                    unsigned char* buf = (unsigned char*)&req;
-                    for (ssize_t i = 0; i < received && i < 32; i++) {
-                        hex_dump << std::hex << std::setfill('0') << std::setw(2) 
-                                << (int)buf[i] << " ";
-                    }
-                    SPDLOG_DEBUG("Thread {}: Partial data: {}", thread_id, hex_dump.str());
-                }
+                SPDLOG_ERROR("Thread {}: Incomplete request - received {} byte(s)", thread_id, received);
             }
             break;
         }
 
-        // Validate op_type before processing
+        ssize_t rest = 0;
+        if (op_byte == OP_BULK_READ || op_byte == OP_BULK_WRITE) {
+            CXLBulkRequestHeader bulk_hdr{};
+            bulk_hdr.op_type = op_byte;
+            rest = recv(client_fd, reinterpret_cast<char*>(&bulk_hdr) + 1,
+                                CXL_BULK_REQ_HDR_SIZE - 1, MSG_WAITALL);
+            if (rest != static_cast<ssize_t>(CXL_BULK_REQ_HDR_SIZE - 1)) {
+                SPDLOG_ERROR("Thread {}: Incomplete bulk header", thread_id);
+                break;
+            }
+            std::vector<uint8_t> write_payload;
+            if (op_byte == OP_BULK_WRITE) {
+                const uint64_t write_size = bulk_hdr.size;
+                if (write_size == 0 || write_size > CXL_BULK_MAX_SIZE) {
+                    SPDLOG_WARN("Thread {}: bulk write bad size {}", thread_id, write_size);
+                    break;
+                }
+                write_payload.resize(write_size);
+                ssize_t got = recv(client_fd, write_payload.data(), write_size, MSG_WAITALL);
+                if (got != static_cast<ssize_t>(write_size)) {
+                    SPDLOG_ERROR("Thread {}: bulk write payload incomplete ({}/{})", thread_id, got,
+                                 write_size);
+                    break;
+                }
+            }
+            handle_bulk_request(client_fd, thread_id, bulk_hdr,
+                                write_payload.empty() ? nullptr : write_payload.data());
+            continue;
+        }
+
+        ServerRequest req{};
+        req.op_type = op_byte;
+        rest = recv(client_fd, reinterpret_cast<char*>(&req) + 1, sizeof(req) - 1, MSG_WAITALL);
+        if (rest != static_cast<ssize_t>(sizeof(req) - 1)) {
+            SPDLOG_ERROR("Thread {}: Incomplete cacheline request", thread_id);
+            break;
+        }
+
         if (req.op_type > OP_LSA_WRITE) {
-            SPDLOG_WARN("Thread {}: Invalid op_type {} (0x{:02x}) - possibly non-CXL client (HTTP scanner?), disconnecting",
-                        thread_id, (int)req.op_type, (int)req.op_type);
+            SPDLOG_WARN("Thread {}: Invalid op_type {} (0x{:02x}) - disconnecting", thread_id,
+                        (int)req.op_type, (int)req.op_type);
             break;
         }
 
@@ -1619,27 +1699,26 @@ void ThreadPerConnectionServer::run_pgas_shm_mode() {
     // Mark server as ready
     __atomic_store_n(&pgas_shm_header_->server_ready, 1, __ATOMIC_RELEASE);
 
-    // Create worker threads for handling PGAS SHM requests
-    const int num_workers = 4;
-    std::vector<std::thread> workers;
-
-    for (int i = 0; i < num_workers; i++) {
-        workers.emplace_back([this]() {
-            while (running) {
-                int processed = poll_pgas_shm_requests();
-                if (processed == 0) {
-                    // No requests - sleep briefly to reduce CPU usage
-                    usleep(100);  // 100us
+    // Single worker avoids slot races; tight poll (no usleep) for sub-us RTT.
+    std::thread worker([this]() {
+        while (running) {
+            int processed = poll_pgas_shm_requests();
+            if (processed == 0) {
+                for (int spin = 0; spin < 4096 && running; spin++) {
+                    processed = poll_pgas_shm_requests();
+                    if (processed > 0) {
+                        break;
+                    }
+#if defined(__x86_64__) || defined(__i386__)
+                    __builtin_ia32_pause();
+#endif
                 }
             }
-        });
-    }
-
-    // Wait for workers to finish
-    for (auto& worker : workers) {
-        if (worker.joinable()) {
-            worker.join();
         }
+    });
+
+    if (worker.joinable()) {
+        worker.join();
     }
 }
 
@@ -1693,17 +1772,6 @@ int ThreadPerConnectionServer::poll_pgas_shm_requests() {
                 __atomic_thread_fence(__ATOMIC_RELEASE);
                 slot->resp_status = CXL_SHM_RESP_OK;
                 total_reads++;
-
-                // Propagate stats through CXL topology
-                controller->counter.inc_local();
-                for (auto &sw : controller->switches) {
-                    sw->insert(slot->timestamp, 0, addr, addr, 0);
-                }
-                for (auto &ep : controller->expanders) {
-                    ep->insert(slot->timestamp, 0, addr, addr, ep->id);
-                }
-
-                log_periodic_stats("PGAS_READ", total_reads.load());
                 processed++;
                 break;
             }
@@ -1724,17 +1792,6 @@ int ThreadPerConnectionServer::poll_pgas_shm_requests() {
                 __atomic_thread_fence(__ATOMIC_RELEASE);
                 slot->resp_status = CXL_SHM_RESP_OK;
                 total_writes++;
-
-                // Propagate stats through CXL topology
-                controller->counter.inc_local();
-                for (auto &sw : controller->switches) {
-                    sw->insert(slot->timestamp, 0, addr, addr, 0);
-                }
-                for (auto &ep : controller->expanders) {
-                    ep->insert(slot->timestamp, 0, addr, addr, ep->id);
-                }
-
-                log_periodic_stats("PGAS_WRITE", total_writes.load());
                 processed++;
                 break;
             }

@@ -4,7 +4,7 @@
 
 在 **2-host** 模拟 CXL 池上说明两件事（**不跑 03 正式实验**）：
 
-1. **CXL 冷读比传统 RDMA/PS 路径更快**（**正式路径用 SHM**；M0 对照时才用 TCP 作 RDMA/远程 PS stub）。
+1. **2-host TCP CXL 池**：大块 IO 用 **bulk RPC** 达到 **数百 MiB/s**；embedding 冷读/一致性仍经 Guest **64B cacheline RPC**（看延迟与 BI，不是 bulk 带宽）。
 2. **Inference reader 与 update agent 争用同一 CXL 池**：并发 delta 写入时，读延迟长尾上升，且硬件 **back-invalidation** 明显增多（为 Task2 软件一致性埋伏笔）。
 
 ```text
@@ -23,7 +23,7 @@
 
 ---
 
-## 固定参数（本机 10 GiB 逻辑表 + **10 GiB 满池** + 小 trace + SHM）
+## 固定参数（本机 10 GiB 逻辑表 + **10 GiB 满池** + 小 trace + TCP）
 
 | 项 | 值 | 说明 |
 |----|-----|------|
@@ -32,7 +32,7 @@
 | **Trace** | `--queries 10000000` | **≈40 MiB** |
 | **每 host L1 / L2** | **1 / 5 GiB** | Criteo motivation 默认 |
 | **Trace** | Criteo Kaggle npz | `script/extract_criteo_trace.py`；26 lookup/广告 |
-| **CXL 传输** | **SHM** | 见下表 |
+| **CXL 传输** | **TCP**（+ bulk 带宽 RPC） | 见下表 |
 | 拓扑 | 2 VM + 共享池 | VM0 update agent，VM1 reader |
 | Lookup | `row_id` → L1 → L2 → L3 | 详见 [02-motivation.md](./02-motivation.md) |
 
@@ -42,10 +42,10 @@
 
 | 层 | 参数 | 作用 |
 |----|------|------|
-| **cxlmemsim_server** | `--comm-mode pgas-shm --pgas-shm-name /cxlmemsim_pgas` | Host 侧 PGAS 槽位，低延迟 |
-| **QEMU guest** | `CXL_TRANSPORT_MODE=shm` | 与 server PGAS 对齐（`launch_qemu_cxl*.sh` / pipeline 默认） |
-| **DAX  backing** | `/dev/shm/cxlmemsim_shared` | Guest `mmap /dev/dax0.0` 的物理池 |
-| **M0 对照（仅 C 步）** | server `--comm-mode tcp` + `CXL_TRANSPORT_MODE=tcp` | 画「远程 PS/RDMA stub」曲线，**不是** B3 默认配置 |
+| **cxlmemsim_server** | `--comm-mode tcp --port 9999` | Host 池 + cacheline/bulk RPC |
+| **QEMU guest** | `CXL_TRANSPORT_MODE=tcp` | 与 pipeline 默认一致 |
+| **带宽压测** | `script/run_2host_rw_tcp_bench.sh` | `RW_BENCH_MODE=bulk`，目标 **数百 MiB/s** |
+| **Guest lookup** | cacheline READ/WRITE | 每次 embedding 访问 ≈ 64B RPC（~µs 级，非 bulk） |
 
 ---
 
@@ -53,7 +53,7 @@
 
 | # | 观察 | 怎么证 | 产出 |
 |---|------|--------|------|
-| **M0** | **SHM** 路径 **快于** TCP（RDMA stub） | `run_latency_cdf_compare.sh`（pgas-shm vs tcp）；motivation 主路径已固定 shm | `transport_cdf.png`、median/p99 RTT |
+| **M0** | TCP **bulk** 带宽 **≥ 数百 MiB/s** | `run_2host_rw_tcp_bench.sh`；对照 `RW_BENCH_MODE=cacheline` ~1 MiB/s | `rw_bench.json` |
 | **M1** | 80/20 + 小 cache → 冷 miss → **读 p99 长尾** | VM1 reader，`--phase run`，小 L1/L2 | `latency_cdf_read.png`、`p99_read.csv` |
 | **M2** | Update agent 写入时与 reader **争用 CXL + BI 风暴** | VM0 持续写 delta；VM1 同时读；对比 idle 写 | `bi_storm.txt`、写期间 p99↑、`server` 带宽/BI 日志 |
 
@@ -75,7 +75,7 @@
 | **③a Cache 层级 CDF** | 每次 lookup 的 tier（L1/L2/L3）CCDF | **B2** | `cache_tier_cdf.png` |
 | **③b Miss–访问一致性** | 按行热度分桶的 L3 miss 率 / L3 miss 质量占比 | **B2** | `miss_vs_access_cdf.png` |
 | **④ 读延迟 CDF** | 端到端延迟（可按 tier 分色） | **B3** | `latency_cdf_read.png` |
-| **传输 RTT CDF**（M0） | SHM vs TCP | **C** | `transport_cdf.png` |
+| **TCP bulk 带宽**（M0） | read/write MiB/s | **C** | `rw_bench.json` |
 
 ```text
 E   extract_criteo_trace → ① target_access_cdf.png

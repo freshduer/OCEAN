@@ -455,6 +455,53 @@ bool SharedMemoryManager::deallocate_region(uint64_t addr) {
     return false;
 }
 
+bool SharedMemoryManager::read_memory(uint64_t addr, uint8_t* buffer, size_t size) {
+    if (!header || !data_area || size == 0 || !buffer) {
+        return false;
+    }
+    if (!is_valid_address(addr)) {
+        return false;
+    }
+
+    size_t bytes_read = 0;
+    while (bytes_read < size) {
+        uint64_t current_addr = addr + bytes_read;
+        uint64_t cacheline_addr = addr_to_cacheline(current_addr);
+        uint64_t index = cacheline_to_index(cacheline_addr);
+        uint8_t* cacheline_data = data_area + (index * SHM_CACHELINE_SIZE);
+
+        size_t offset = current_addr - cacheline_addr;
+        size_t chunk = std::min(size - bytes_read, SHM_CACHELINE_SIZE - offset);
+        memcpy(buffer + bytes_read, cacheline_data + offset, chunk);
+        bytes_read += chunk;
+    }
+    return true;
+}
+
+bool SharedMemoryManager::write_memory(uint64_t addr, const uint8_t* data, size_t size) {
+    if (!header || !data_area || size == 0 || !data) {
+        return false;
+    }
+    if (!is_valid_address(addr)) {
+        return false;
+    }
+
+    size_t bytes_written = 0;
+    while (bytes_written < size) {
+        uint64_t current_addr = addr + bytes_written;
+        uint64_t cacheline_addr = addr_to_cacheline(current_addr);
+        uint64_t index = cacheline_to_index(cacheline_addr);
+        uint8_t* cacheline_data = data_area + (index * SHM_CACHELINE_SIZE);
+
+        size_t offset = current_addr - cacheline_addr;
+        size_t chunk = std::min(size - bytes_written, SHM_CACHELINE_SIZE - offset);
+        memcpy(cacheline_data + offset, data + bytes_written, chunk);
+        bytes_written += chunk;
+    }
+    __sync_synchronize();
+    return true;
+}
+
 bool SharedMemoryManager::is_valid_address(uint64_t addr) const {
     if (!header) {
         return false;

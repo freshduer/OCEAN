@@ -13,6 +13,7 @@
 #include "lbr.h"
 #include "monitor.h"
 #include "../include/distributed_server.h"
+#include <spdlog/spdlog.h>
 
 void CXLController::insert_end_point(CXLMemExpander *end_point) { this->cur_expanders.emplace_back(end_point); }
 
@@ -35,7 +36,9 @@ void CXLController::construct_topo(std::string_view newick_tree) {
             } else {
                 throw std::invalid_argument("Unbalanced number of parentheses");
             }
-        } else if (token == "," || token == ";") {
+        } else if (token == "," || token == ";" || token == ":") {
+        } else if (token == "CPU" || token == "CXL") {
+            // Human-readable labels from legacy topology files; index follows ':' token.
         } else if (token == "R" && t + 4 < tokens.size() &&
                    tokens[t+1] == ":" && tokens[t+3] == ":") {
             // R:node_id:exp_id - creates RemoteCXLExpander
@@ -48,8 +51,16 @@ void CXLController::construct_topo(std::string_view newick_tree) {
             stk.back()->expanders.emplace_back(remote);
             t += 4; // Skip R:node_id:exp_id (5 tokens total: R, :, node_id, :, exp_id)
         } else {
-            stk.back()->expanders.emplace_back(this->cur_expanders[atoi(token.c_str()) - 1]);
-            device_map[num_end_points] = this->cur_expanders[atoi(token.c_str()) - 1];
+            char *end = nullptr;
+            long idx = strtol(token.c_str(), &end, 10);
+            if (end == token.c_str() || *end != '\0' || idx < 1 ||
+                idx > static_cast<long>(this->cur_expanders.size())) {
+                SPDLOG_WARN("Skipping invalid topology endpoint token '{}'", token);
+                continue;
+            }
+            auto *endpoint = this->cur_expanders[static_cast<size_t>(idx - 1)];
+            stk.back()->expanders.emplace_back(endpoint);
+            device_map[num_end_points] = endpoint;
             num_end_points++;
         }
     }

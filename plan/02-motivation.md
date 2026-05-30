@@ -8,7 +8,7 @@
 
 **要说明的两点**（写进 `summary.md`）：
 
-1. **比 RDMA/远程 PS 快**：正式实验路径为 **SHM**（`pgas-shm` + `CXL_TRANSPORT_MODE=shm`）；M0 用 TCP 仅作对照曲线。
+1. **TCP 承载 CXL 池**：2-host 统一 `CXL_TRANSPORT_MODE=tcp`；大块顺序 IO 用 **bulk RPC**（`OP_BULK_READ/WRITE`，默认 256KiB–1MiB/次）压到 **数百 MiB/s**；细粒度一致性仍走 64B cacheline RPC。
 2. **Reader 与 update agent 竞争**：VM0 写 embedding delta 时，VM1 读延迟 **p99 升高**，server **`back_invalidations`** 相对无写阶段明显上升。
 
 ```text
@@ -45,7 +45,7 @@ B3 → 2-host 竞争 → ④ + BI
 | **L1 / L2** | **1 / 5 GiB** | 写入 `trace_meta.json` |
 | **trace 文件** | **≈40 MiB** | `uint32_t row_id[Q]` |
 
-> **Server**：`./build/cxlmemsim_server --capacity=10240 --comm-mode pgas-shm ...`
+> **Server**：`./build/cxlmemsim_server --capacity=10240 --comm-mode tcp --port 9999 -t qemu_integration/topology_simple.txt`
 
 ### Lookup 语义（每次 trace 一步 = 1 次 embedding lookup）
 
@@ -94,15 +94,16 @@ results/motivation/trace/
 
 ---
 
-## 传输（默认 SHM）
+## 传输（默认 TCP）
 
 | 组件 | 配置 |
 |------|------|
-| server | `--comm-mode pgas-shm --pgas-shm-name /cxlmemsim_pgas` |
-| QEMU | `export CXL_TRANSPORT_MODE=shm` |
-| guest 冷读 | `mmap /dev/dax0.0` → 经 shm 访问 host 池（非 TCP RPC） |
+| server | `--comm-mode tcp --port 9999` |
+| QEMU | `export CXL_TRANSPORT_MODE=tcp` |
+| guest | `mmap /dev/dax0.0`；每次 load/store 经 QEMU → **cacheline RPC**（64B） |
+| host 带宽验收 | `bash script/run_2host_rw_tcp_bench.sh`（**bulk**，目标 **数百 MiB/s**） |
 
-> **A/B/B3 全部在 SHM 栈上跑。** TCP 只出现在 **C（M0）** 对照实验。
+> **Motivation 延迟/BI（B3）** 走 Guest cacheline 路径；**池带宽** 用 host bulk 压测，勿用 64B cacheline bench 当带宽指标。
 
 ---
 
@@ -215,15 +216,16 @@ results/motivation/trace/
 
 ---
 
-## C. M0 — SHM 比 TCP（RDMA stub）快
+## C. M0 — TCP 池带宽（bulk）
 
 ```bash
-bash script/run_latency_cdf_compare.sh
+cmake --build build -j --target cxlmemsim_server
+RW_BENCH_SEC=20 RW_BULK_BYTES=262144 bash script/run_2host_rw_tcp_bench.sh
+# 可选加大块：RW_BULK_BYTES=1048576
 ```
 
-| 验收 | `pgas-shm` median/p99 **明显低于** `tcp` |
-
-> 跑完 M0 后恢复 pipeline shm，再跑 B3。
+| 验收 | 单角色或 read+write 合计 **≥ 数百 MiB/s**（本机 localhost） |
+| 对照 | `RW_BENCH_MODE=cacheline` 应回落到 **~1 MiB/s**（说明瓶颈在 64B RPC，非池容量） |
 
 ---
 
@@ -249,9 +251,9 @@ bash script/run_latency_cdf_compare.sh
 ```markdown
 # Motivation（2-host，10 GiB 满池）
 
-## M0 — SHM vs TCP
-- TCP p50/p99: ___ / ___
-- PGAS-SHM p50/p99: ___ / ___
+## M0 — TCP bulk 带宽
+- bulk read/write MiB/s: ___ / ___（256KiB 或 1MiB 块）
+- cacheline 对照 MiB/s: ___（应 ~1）
 
 ## 工作负载（Criteo DLRM，10 GiB 满池）
 - 逻辑表 / CXL 池: ___ GiB（应相同）, N_logical=___, dim=128

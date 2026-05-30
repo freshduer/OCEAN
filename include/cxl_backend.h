@@ -273,6 +273,15 @@ typedef struct {
 /* Header flags */
 #define CXL_SHM_FLAG_METADATA_ENABLED  0x01
 
+/* Spin hint for PGAS client/server polling loops (avoid usleep on hot path). */
+static inline void cxl_cpu_pause(void) {
+#if defined(__x86_64__) || defined(__i386__)
+    __asm__ __volatile__("pause" ::: "memory");
+#else
+    __asm__ __volatile__("" ::: "memory");
+#endif
+}
+
 /* Size calculation */
 #define CXL_SHM_HEADER_SIZE(nslots) \
     (sizeof(cxl_shm_header_t) + (nslots) * sizeof(cxl_shm_slot_t))

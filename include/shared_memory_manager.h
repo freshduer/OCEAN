@@ -111,6 +111,10 @@ public:
     bool read_cacheline(uint64_t addr, uint8_t* buffer, size_t size);
     bool write_cacheline(uint64_t addr, const uint8_t* data, size_t size);
 
+    /* Sequential bulk access (no per-cacheline coherency); for TCP throughput path. */
+    bool read_memory(uint64_t addr, uint8_t* buffer, size_t size);
+    bool write_memory(uint64_t addr, const uint8_t* data, size_t size);
+
     // Direct access to data area (for msync)
     void* get_data_area() { return data_area; }
 

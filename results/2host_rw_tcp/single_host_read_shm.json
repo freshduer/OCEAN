@@ -1,0 +1,25 @@
+{
+  "transport": "pgas-shm",
+  "role": "read_only_cacheline_64b",
+  "fix": "remove server usleep(100), single worker, client pause spin",
+  "before": {
+    "p50_us": 0.72,
+    "throughput_mib_s_note": "~1.5 MiB/s wall with ~1.7% failures"
+  },
+  "after": {
+    "samples": 199999,
+    "failures": 1,
+    "wall_s": 0.37,
+    "p50_us": 0.396,
+    "p99_us": 0.933,
+    "p999_us": 1.317,
+    "avg_us": 0.416,
+    "min_us": 0.261,
+    "throughput_mib_s": 33.0,
+    "ops_s": 543476
+  },
+  "compare_tcp_cacheline": {
+    "p50_us": 45.5,
+    "throughput_mib_s": 1.27
+  }
+}
