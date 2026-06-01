@@ -163,6 +163,12 @@ target_compile_options(cxl_transport_latency_bench PRIVATE -std=gnu11)
 target_include_directories(cxl_transport_latency_bench PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(cxl_transport_latency_bench PRIVATE rt pthread)
 
+add_executable(ring_shm_latency_bench ring_shm_latency_bench.cpp)
+target_compile_features(ring_shm_latency_bench PRIVATE cxx_std_17)
+target_include_directories(ring_shm_latency_bench PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(ring_shm_latency_bench PRIVATE cxlmemsim_server_lib rt pthread)
+set_target_properties(ring_shm_latency_bench PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
 find_package(cxxopts REQUIRED)
 
 add_executable(embedding_bench embedding_sim/embedding_bench.cpp)

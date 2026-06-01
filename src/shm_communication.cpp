@@ -298,26 +298,24 @@ bool ShmCommunicationManager::send_response(uint32_t client_id, const ShmRespons
     
     auto& ring = shm_comm->ring_buffers[client_id - 1];
     
-    // Find the entry waiting for response
-    uint32_t head = ring.head.load(std::memory_order_acquire);
-    for (uint32_t i = 0; i < ShmRingBuffer::RING_SIZE; i++) {
-        uint32_t idx = (head + i) % ShmRingBuffer::RING_SIZE;
-        auto& entry = ring.entries[idx];
-        
-        if (!entry.request_ready.load() && !entry.response_ready.load()) {
-            // Copy response
-            std::memcpy(&entry.response, &response, sizeof(ShmResponse));
-            entry.response_ready.store(true, std::memory_order_release);
-            
-            // Signal response semaphore
-            sem_post(response_sem);
-            
-            ring.total_responses.fetch_add(1, std::memory_order_relaxed);
-            return true;
-        }
+    // Response belongs to the entry the server just dequeued (tail was advanced in wait_for_request).
+    // Do not use head==tail as empty test: both can be 0 after a full ring lap.
+    uint32_t tail = ring.tail.load(std::memory_order_acquire);
+    uint32_t idx = (tail + ShmRingBuffer::RING_SIZE - 1) % ShmRingBuffer::RING_SIZE;
+    auto& entry = ring.entries[idx];
+
+    if (entry.request_ready.load(std::memory_order_acquire) ||
+        entry.response_ready.load(std::memory_order_acquire)) {
+        return false;
     }
-    
-    return false;
+
+    std::memcpy(&entry.response, &response, sizeof(ShmResponse));
+    entry.response_ready.store(true, std::memory_order_release);
+
+    sem_post(response_sem);
+
+    ring.total_responses.fetch_add(1, std::memory_order_relaxed);
+    return true;
 }
 
 // Client operations
